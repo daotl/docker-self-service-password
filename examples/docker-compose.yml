@@ -5,29 +5,30 @@ services:
     image: tiredofit/self-service-password:latest
     container_name: ssp-app
     labels:
-      - traefik.enable=true
-      - traefik.frontend.rule=Host:url.example.com
-      - traefik.port=80
-      - traefik.protocol=http
-      - traefik.docker.network=proxy
-      - traefik.backend=ssp-app
+      traefik.enable: "true"
+      traefik.http.routers.fusionDirectory.entryPoints: web
+      traefik.http.routers.fusionDirectory.tls.certResolver: default
+      traefik.http.routers.fusionDirectory.rule: Host(`password.example.com`, `pw.example.com`)
+      traefik.http.routers.fusionDirectory.middlewares: redirectPw@docker
+      traefik.http.middlewares.redirectPw.redirectRegex.regex: pw.example.com(.*)
+      traefik.http.middlewares.redirectPw.redirectRegex.replacement: password.example.com$${1}
     volumes:
       ### Map /www/ssp if you want to configure the entire application
-      - ./data/:/www/ssp
+      - self-service-password_data:/www/ssp
       #### OR ####
       ### Map /assets/custom if you want to overwrite/add files on startup and rely on source inside image. Follow directory structure of inside /www/ssp to overwrite
-     #- ./assets/custom:/assets/custom
+     #- self-service-password_assets-custom:/assets/custom
       ### You can also just map the configuration directory outside of the container as well
-     #- ./config:/www/ssp/conf
+     #- self-service-password_config:/www/ssp/conf
 
-      - ./logs/:/www/logs
+      - self-service-password_logs:/www/logs
     environment:
     ## Set to Manual if you want to edit the configuration yourself without Env Vars
-      - DEBUG_MODE=TRUE
+      - DEBUG_MODE=FALSE
       - SETUP_TYPE=AUTO
     # LDAP Settings
-      - LDAP_SERVER=ldap://openldap.example.com
-      - LDAP_STARTTLS=false
+      - LDAP_SERVER=ldap://ldap.example.com
+      - LDAP_STARTTLS=true
       - LDAP_BINDDN=cn=admin,dc=example,dc=com
       - LDAP_BINDPASS=supersecurepassword
       - LDAP_BASE_SEARCH=ou=people,dc=example,dc=com
@@ -88,7 +89,7 @@ services:
     # Dont reuse the same password as currently
       - PASSWORD_NO_REUSE=true
     # Definition of special characters
-      - PASSWORD_SPECIAL_CHARACTERS="^a-zA-Z0-9"
+      - PASSWORD_SPECIAL_CHARACTERS=^a-zA-Z0-9
     # Forbidden characters
     # Check that password is different than login
       - PASSWORD_DIFFERENT_LOGIN=true
@@ -174,7 +175,7 @@ services:
       - SMTP_PORT=587
       - SMTP_SECURE_TYPE=tls
       - SMTP_AUTOTLS=false
-      - MAIL_CONTENTTYPE="text/plain"
+      - MAIL_CONTENTTYPE=text/plain
       - MAIL_WORDWRAP=80
       - MAIL_CHARSET="utf8"
       - MAIL_PRIORITY=3
@@ -246,12 +247,36 @@ services:
     # sendsms
       - DEFAULT_ACTION=change
     networks:
-      - proxy
-      - services
+      - web
+      # - openldap
+    expose:
+      - 80
     restart: always
 
 networks:
-  proxy:
+  web:
     external: true
-  services:
-    external: true
+  # openldap:
+  #   external: true
+
+volumes:
+  self-service-password_data:
+    driver_opts:
+      type: none
+      device: ${VOLUMES_ROOT}/data
+      o: bind
+  self-service-password_logs:
+    driver_opts:
+      type: none
+      device: ${VOLUMES_ROOT}/logs
+      o: bind
+  # self-service-password_assets-custom:
+  #   driver_opts:
+  #     type: none
+  #     device: ${VOLUMES_ROOT}/assets-custom
+  #     o: bind
+  # self-service-password_config:
+  #   driver_opts:
+  #     type: none
+  #     device: ${VOLUMES_ROOT}/config
+  #     o: bind
