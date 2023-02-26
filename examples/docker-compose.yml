@@ -5,13 +5,10 @@ services:
     image: tiredofit/self-service-password:latest
     container_name: ssp-app
     labels:
-      traefik.enable: "true"
-      traefik.http.routers.fusionDirectory.entryPoints: web
-      traefik.http.routers.fusionDirectory.tls.certResolver: default
-      traefik.http.routers.fusionDirectory.rule: Host(`password.example.com`, `pw.example.com`)
-      traefik.http.routers.fusionDirectory.middlewares: redirectPw@docker
-      traefik.http.middlewares.redirectPw.redirectRegex.regex: pw.example.com(.*)
-      traefik.http.middlewares.redirectPw.redirectRegex.replacement: password.example.com$${1}
+      caddy: password.example.com
+      caddy.reverse_proxy: '{{upstreams}}'
+      caddy_pw: pw.example.com
+      caddy_pw.redir: 'https://password.example.com{uri} permanent'
     volumes:
       ### Map /www/ssp if you want to configure the entire application
       - self-service-password_data:/www/ssp
